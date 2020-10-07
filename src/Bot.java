@@ -75,6 +75,7 @@ public abstract class Bot
      * @return a string with your best guesses for each player.  Format of string is player1Name,guest1Name:player2Name,guest2Name...
      */
     public abstract String reportGuesses();
+    public abstract String reportGuessesAdvanced();
 
     public String getPlayerName()
     {

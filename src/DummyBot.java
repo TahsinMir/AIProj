@@ -27,4 +27,10 @@ public class DummyBot extends Bot
     {
         super(playerName, guestName, numStartingGems, gemLocations, playerNames, guestNames);
     }
+
+	@Override
+	public String reportGuessesAdvanced() {
+		// TODO Auto-generated method stub
+		return "";
+	}
 }
