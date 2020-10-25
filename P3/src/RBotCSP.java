@@ -1,8 +1,10 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Random;
 
 
@@ -352,19 +354,115 @@ public class RBotCSP extends Bot
 /* Modify this method to do something more intelligent. */
     public String reportGuesses()
     {
-        String rval="";
-        for(String k:players.keySet())
-        {
-            Player p = players.get(k);
-            rval += k;
-            Collections.shuffle(p.possibleGuestNames);
-            for(String g: p.possibleGuestNames)
+    	//assuming we have six players
+    	int noOfPlayers = 6;
+    	
+    	//each item in the list is a string array containing the possible guesses of that player
+    	List<String[]> playerGuessList = new ArrayList<String[]>();
+    	
+    	for(String k: players.keySet())
+    	{
+    		Player p = players.get(k);
+    		
+    		String[] playerGuesses = new String[p.possibleGuestNames.size() + 1];
+    		playerGuesses[0] = k;
+    		
+    		for(int i=1;i<p.possibleGuestNames.size() + 1 ; i++)
             {
-                rval += ","+g;
+            	playerGuesses[i] = p.possibleGuestNames.get(i-1);
             }
-            rval+=":";
-        }
-        return rval.substring(0,rval.length()-1);
+            //now we have a string array with guesses of this particular player
+            //add it to the list
+            playerGuessList.add(playerGuesses);
+    	}
+    	
+    	// we will also need count of each character in the knowledge base for future use
+    	HashMap<String, Integer> charactersOcc = new HashMap<String, Integer>();
+    	HashMap<String, Boolean> charactersValidity = new HashMap<String, Boolean>();
+    	String[] characterNames = {"Buford Barnswallow", "Earl of Volesworthy", "Mildred Wellington", "Nadia Bwalya",
+                "Viola Chung", "Dr. Ashraf Najem", "Remy La Rocque", "Lily Nesbit", "Trudie Mudge",
+                "Stefano Laconi"};
+    	for(int i=0;i<characterNames.length;i++)
+    	{
+    		charactersOcc.put(characterNames[i], 0);
+    		charactersValidity.put(characterNames[i], Boolean.TRUE);
+    	}
+        
+    	// now in stead of a random guessing, we sort the list by size
+    	// and try to satisfy constraints in order to preditc players
+    	List<String[]> playerGuessListSorted = new ArrayList<String[]>();
+    	// List<boolean[]> playerGuessListSortedIsValid = new ArrayList<boolean[]>();
+    	
+    	
+    	int sizToLookUp = 1;
+    	while(sizToLookUp <= 11)
+    	{
+    		for (String[] element : playerGuessList)
+    		{
+    		    if(element.length == sizToLookUp)
+    		    {
+    		    	//add the array in the sorted manner
+    		    	playerGuessListSorted.add(element);
+    		    	//add a boolean tracker for each string array, initially all values are valid
+    		    	//boolean[] boolArray = new boolean[element.length];
+    		    	//Arrays.fill(boolArray, Boolean.TRUE);
+    		    }
+    		}
+    		
+    		sizToLookUp++;
+    	}
+    	
+    	//now we have the sorted knowledge base where the player with
+    	//least info(or minimum amount of predictions) is in the beginning
+    	
+    	//get number of occurances for each character in the KB
+    	for(String[] individualList: playerGuessListSorted)
+    	{
+    		for(int i=1;i<individualList.length;i++)	//starting from index 1 because the first index is just the player name
+    		{
+    			int temp = charactersOcc.get(individualList[i]);
+    			charactersOcc.put(individualList[i], temp+1);
+    		}
+    	}
+    	
+    	// now we begin the guessing, starting from the player with minimum amount of characters as guesses
+    	String rval="";
+    	for(String[] list: playerGuessListSorted)
+    	{
+    		//get the player
+        	String player = list[0];
+        	rval += player;
+        	
+        	// now get the result character, that has the highest likelihood
+        	int tempOcc = 100000;	// we will take the character with the lowest occurance because that character has the highest probability
+        	int tempOccIndex = -1;
+        	for(int i=1;i<list.length;i++)
+        	{
+        		if(tempOcc > charactersOcc.get(list[i]) && charactersValidity.get(list[i]) == Boolean.TRUE)
+        		{
+        			tempOcc = charactersOcc.get(list[i]);
+        			tempOccIndex = i;
+        		}
+        	}
+        	// now we know which character to pick for this player
+        	if(tempOccIndex == -1)
+        	{
+        		rval += "," + list[1] + ":";
+            	// get rid of this character from other player kbs because now it is irrelevant
+            	charactersOcc.put(list[1], charactersOcc.get(list[1])-1);
+            	charactersValidity.put(list[1], Boolean.FALSE);
+        	}
+        	else
+        	{
+        		rval += "," + list[tempOccIndex] + ":";
+            	// get rid of this character from other player kbs because now it is irrelevant
+            	charactersOcc.put(list[tempOccIndex], charactersOcc.get(list[tempOccIndex])-1);
+            	charactersValidity.put(list[tempOccIndex], Boolean.FALSE);
+        	}
+    	}
+    	
+    	return rval.substring(0,rval.length()-1);
+    	
     }
 
     public RBotCSP(String playerName, String guestName, int numStartingGems, String gemLocations, String[] playerNames, String[] guestNames)
