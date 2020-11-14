@@ -1,10 +1,18 @@
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
 
-/** This is the base class for computer player/bots. 
- * 
+
+/** This is the base class for computer player/bots.
+ *
  */
 
-public class RBotRandom extends Bot
+public class RBotCSPBestPlayerToAsk extends Bot
 {
     Random r = new Random();
     HashMap<String, Piece> pieces; // Keyed off of guest name
@@ -40,7 +48,7 @@ public class RBotRandom extends Bot
             {
                 pieces.remove(name);
             }
-            
+
             public void addPlayer(Piece piece)
             {
                 piece.col=this.col;
@@ -69,13 +77,13 @@ public class RBotRandom extends Bot
             rooms[player.row][player.col].removePlayer(player);
             rooms[row][col].addPlayer(player);
         }
-        
+
         public void clearRooms()
         {
             rooms=new Room[3][4];
             int x=0, y=0;
             boolean red, green, yellow;
-        
+
             for(String gems:gemLocations.trim().split(":"))
             {
                 if(gems.contains("red")) red=true;
@@ -123,14 +131,14 @@ public class RBotRandom extends Bot
     {
         public String playerName;
         public ArrayList<String> possibleGuestNames;
-        
+
         public void adjustKnowledge(ArrayList<String> possibleGuests)
         {
             Iterator<String> it = possibleGuestNames.iterator();
             while(it.hasNext())
             {
                 String g;
-                if(!possibleGuests.contains(g=it.next())) 
+                if(!possibleGuests.contains(g=it.next()))
                 {
                     it.remove();
                 }
@@ -142,7 +150,7 @@ public class RBotRandom extends Bot
             Iterator<String> it = possibleGuestNames.iterator();
             while(it.hasNext())
             {
-                if(it.next().equals(notPossibleGuest)) 
+                if(it.next().equals(notPossibleGuest))
                 {
                     it.remove();
                     break;
@@ -214,7 +222,7 @@ public class RBotRandom extends Bot
 
         for(String cardAction: card.split(":")) // just go ahead and do them in this order
         {
-            if(cardAction.startsWith("move")) 
+            if(cardAction.startsWith("move"))
             {
                 String guest;
                 guest = guestNames[r.nextInt(guestNames.length)];
@@ -222,21 +230,21 @@ public class RBotRandom extends Bot
                 //moves = getPossibleMoves(piece);
                 actions += ":move," + guest + "," + r.nextInt(3) + "," + r.nextInt(4);
             }
-            else if(cardAction.startsWith("viewDeck")) 
+            else if(cardAction.startsWith("viewDeck"))
             {
                 actions += ":viewDeck";
             }
-            else if(cardAction.startsWith("get")) 
+            else if(cardAction.startsWith("get"))
             {
                 String gemToGrab;
                 int count;
-                if(cardAction.equals("get,")) 
+                if(cardAction.equals("get,"))
                 {
                     // Grab a random gem
                     gemToGrab = this.board.rooms[me.row][me.col].availableGems[r.nextInt(this.board.rooms[me.row][me.col].availableGems.length)];
                     actions += ":get," + gemToGrab;
                 }
-                else 
+                else
                 {
                     actions += ":" + cardAction;
                     gemToGrab=cardAction.trim().split(",")[1];
@@ -245,13 +253,76 @@ public class RBotRandom extends Bot
                 else if(gemToGrab.equals("green")) gemCounts[Suspicion.GREEN]++;
                 else gemCounts[Suspicion.YELLOW]++;
             }
-            else if(cardAction.startsWith("ask")) 
+            else if(cardAction.startsWith("ask"))
             {
                 // Ask a random player
-                actions += ":" + cardAction + otherPlayerNames[r.nextInt(otherPlayerNames.length)]; 
+                //actions += ":" + cardAction + otherPlayerNames[r.nextInt(otherPlayerNames.length)];
+                // Best palyer to ask
+                actions += ":" + cardAction + this.bestPlayerToAsk(cardAction.split(",")[1], board);
             }
         }
         return actions;
+    }
+
+    // This is the character name that we will be asked question to other player if they can see this player or not
+    private String bestPlayerToAsk(String guest, String board){
+        // Position of the character
+        // characterPos =
+        // WE need board
+        // pieces have the player locations of the board
+        float gain = Float.NEGATIVE_INFINITY;
+        float currentGain;
+        String playerToAsk = "";
+        for (String player: otherPlayerNames){
+            // check the entropy gain if we ask this player
+            // we will take the highest gain
+            currentGain = getGain(guest, player, board);
+            if (currentGain > gain){
+                playerToAsk = player;
+                gain = currentGain;
+            }
+        }
+
+        return playerToAsk;
+    }
+
+    private float getGain(String guest, String player, String board){
+        // possible character if the answare is true
+        ArrayList<String> possibleGuest_true = getPossibleGuesAfterAsking(guest, player, board ,true);
+        // possible character if the answare is false
+        // Actual KnowledgeBase
+        ArrayList<String> actualKB = players.get(player).possibleGuestNames;
+        int remainningGuessTrue = remainingGuess(actualKB, possibleGuest_true);
+        int remainningGuessFalse = actualKB.size() - remainningGuessTrue;
+        float trueFrac = (float) remainningGuessTrue / actualKB.size();
+        float FalseFrac = (float) remainningGuessFalse / actualKB.size();
+
+        float gain = (float) (- trueFrac * Math.log(trueFrac) - FalseFrac * Math.log(FalseFrac));
+        return gain;
+    }
+
+    private int remainingGuess(ArrayList<String> actualKB, ArrayList<String> possibleGuestNames){
+        int total_now = actualKB.size();
+        Iterator<String> it = actualKB.iterator();
+        while(it.hasNext()) {
+            if(!possibleGuestNames.contains(it.next())) {
+                total_now--;
+            }
+        }
+        return total_now;
+    }
+
+    private ArrayList<String> getPossibleGuesAfterAsking(String guest, String player, String board, boolean canSee)
+    {
+        Board b = new Board(board, pieces, gemLocations);
+        ArrayList<String> possibleGuests = new ArrayList<String>();
+        Piece p1 = pieces.get(guest);  // retrieve the guest
+        for(String k : pieces.keySet())
+        {
+            Piece p2 = pieces.get(k);
+            if((canSee && canSee(p1,p2)) || (!canSee && !canSee(p1,p2))) possibleGuests.add(p2.name);
+        }
+        return possibleGuests;
     }
 
     private int countGems(String gem)
@@ -285,7 +356,7 @@ public class RBotRandom extends Bot
             y+=x/4;
             x%=4;
         }
-        
+
         return possibleGuests;
     }
 
@@ -315,17 +386,17 @@ public class RBotRandom extends Bot
         }
     }
 
-    private boolean canSee(Piece p1, Piece p2) // returns whether or not these two pieces see each 
+    private boolean canSee(Piece p1, Piece p2) // returns whether or not these two pieces see each
     {
         return (p1.row==p2.row || p1.col == p2.col);
     }
 
-    
+
     public void answerAsk(String guest, String player, String board, boolean canSee)
     {
         Board b = new Board(board, pieces, gemLocations);
         ArrayList<String> possibleGuests = new ArrayList<String>();
-        Piece p1 = pieces.get(guest);  // retrieve the guest 
+        Piece p1 = pieces.get(guest);  // retrieve the guest
         for(String k : pieces.keySet())
         {
             Piece p2 = pieces.get(k);
@@ -343,25 +414,121 @@ public class RBotRandom extends Bot
     }
 
 
-/* Modify this method to do something more intelligent. */
+    /* Modify this method to do something more intelligent. */
     public String reportGuesses()
     {
-        String rval="";
-        for(String k:players.keySet())
+        //assuming we have six players
+        int noOfPlayers = 6;
+
+        //each item in the list is a string array containing the possible guesses of that player
+        List<String[]> playerGuessList = new ArrayList<String[]>();
+
+        for(String k: players.keySet())
         {
             Player p = players.get(k);
-            rval += k;
-            Collections.shuffle(p.possibleGuestNames);
-            for(String g: p.possibleGuestNames)
+
+            String[] playerGuesses = new String[p.possibleGuestNames.size() + 1];
+            playerGuesses[0] = k;
+
+            for(int i=1;i<p.possibleGuestNames.size() + 1 ; i++)
             {
-                rval += ","+g;
+                playerGuesses[i] = p.possibleGuestNames.get(i-1);
             }
-            rval+=":";
+            //now we have a string array with guesses of this particular player
+            //add it to the list
+            playerGuessList.add(playerGuesses);
         }
+
+        // we will also need count of each character in the knowledge base for future use
+        HashMap<String, Integer> charactersOcc = new HashMap<String, Integer>();
+        HashMap<String, Boolean> charactersValidity = new HashMap<String, Boolean>();
+        String[] characterNames = {"Buford Barnswallow", "Earl of Volesworthy", "Mildred Wellington", "Nadia Bwalya",
+                "Viola Chung", "Dr. Ashraf Najem", "Remy La Rocque", "Lily Nesbit", "Trudie Mudge",
+                "Stefano Laconi"};
+        for(int i=0;i<characterNames.length;i++)
+        {
+            charactersOcc.put(characterNames[i], 0);
+            charactersValidity.put(characterNames[i], Boolean.TRUE);
+        }
+
+        // now in stead of a random guessing, we sort the list by size
+        // and try to satisfy constraints in order to preditc players
+        List<String[]> playerGuessListSorted = new ArrayList<String[]>();
+        // List<boolean[]> playerGuessListSortedIsValid = new ArrayList<boolean[]>();
+
+
+        int sizToLookUp = 1;
+        while(sizToLookUp <= 11)
+        {
+            for (String[] element : playerGuessList)
+            {
+                if(element.length == sizToLookUp)
+                {
+                    //add the array in the sorted manner
+                    playerGuessListSorted.add(element);
+                    //add a boolean tracker for each string array, initially all values are valid
+                    //boolean[] boolArray = new boolean[element.length];
+                    //Arrays.fill(boolArray, Boolean.TRUE);
+                }
+            }
+
+            sizToLookUp++;
+        }
+
+        //now we have the sorted knowledge base where the player with
+        //least info(or minimum amount of predictions) is in the beginning
+
+        //get number of occurances for each character in the KB
+        for(String[] individualList: playerGuessListSorted)
+        {
+            for(int i=1;i<individualList.length;i++)	//starting from index 1 because the first index is just the player name
+            {
+                int temp = charactersOcc.get(individualList[i]);
+                charactersOcc.put(individualList[i], temp+1);
+            }
+        }
+
+        // now we begin the guessing, starting from the player with minimum amount of characters as guesses
+        String rval="";
+        for(String[] list: playerGuessListSorted)
+        {
+            //get the player
+            String player = list[0];
+            rval += player;
+
+            // now get the result character, that has the highest likelihood
+            int tempOcc = 100000;	// we will take the character with the lowest occurance because that character has the highest probability
+            int tempOccIndex = -1;
+            for(int i=1;i<list.length;i++)
+            {
+                if(tempOcc > charactersOcc.get(list[i]) && charactersValidity.get(list[i]) == Boolean.TRUE)
+                {
+                    tempOcc = charactersOcc.get(list[i]);
+                    tempOccIndex = i;
+                }
+            }
+            // now we know which character to pick for this player
+            if(tempOccIndex == -1)
+            {
+                rval += "," + list[1] + ":";
+                // get rid of this character from other player kbs because now it is irrelevant
+                charactersOcc.put(list[1], charactersOcc.get(list[1])-1);
+                charactersValidity.put(list[1], Boolean.FALSE);
+            }
+            else
+            {
+                rval += "," + list[tempOccIndex] + ":";
+                // get rid of this character from other player kbs because now it is irrelevant
+                charactersOcc.put(list[tempOccIndex], charactersOcc.get(list[tempOccIndex])-1);
+                charactersValidity.put(list[tempOccIndex], Boolean.FALSE);
+            }
+        }
+
         return rval.substring(0,rval.length()-1);
+
     }
 
-    public RBotRandom(String playerName, String guestName, int numStartingGems, String gemLocations, String[] playerNames, String[] guestNames)
+    public RBotCSPBestPlayerToAsk(String playerName, String guestName, int numStartingGems, String gemLocations, String[] playerNames, String[] guestNames)
     {
         super(playerName, guestName, numStartingGems, gemLocations, playerNames, guestNames);
         display = new TextDisplay(gemLocations);

@@ -87,10 +87,8 @@ public class Suspicion
         int row;
         int col;
         int wins=0;
-        int winsAdvanced=0;
         int gemScore=0;
         int guessScore=0;
-        int guessScoreAdvanced = 0;
 
         public BotManager(Bot bot)
         {
@@ -493,32 +491,20 @@ public class Suspicion
     public void tabulateResults()
     {
         int bestScore=0;
-        int bestScoreAdvanced=0;
         BotManager bestBot=null;
-        BotManager bestBotAdvanced=null;
         Iterator<BotManager> botit = bots.iterator();
         while(botit.hasNext())
         {
             BotManager bot = botit.next();
             int guessScore=0;
-            int guessScoreAdvanced = 0;
             int gemScore=0;
 
             String guesses[] = bot.bot.reportGuesses().trim().split(":");
             for(String temp:guesses)
             {
                 String p = temp.trim().split(",")[0];
-                String g = temp.trim().split(",")[1];	// this is where it receives the shuffled result
+                String g = temp.trim().split(",")[1];
                 if(board.players.get(g).bot.playerName.equals(p)) guessScore+=7;
-            }
-            
-            //advanced guesses
-            String guessesAdvanced[] = bot.bot.reportGuessesAdvanced().trim().split(":");
-            for(String tempAdvanced:guessesAdvanced)
-            {
-                String pAdvanced = tempAdvanced.trim().split(",")[0];
-                String gAdvanced = tempAdvanced.trim().split(",")[1];
-                if(board.players.get(gAdvanced).bot.playerName.equals(pAdvanced)) guessScoreAdvanced+=7;
             }
 
             gemScore = bot.gems[0] + bot.gems[1] + bot.gems[2]; 
@@ -532,18 +518,11 @@ public class Suspicion
                 bestScore = guessScore+gemScore;
                 bestBot=bot;
             }
-            if(guessScoreAdvanced+gemScore>bestScoreAdvanced)
-            {
-                bestScoreAdvanced = guessScoreAdvanced+gemScore;
-                bestBotAdvanced=bot;
-            }
 
-            bot.guessScoreAdvanced=guessScoreAdvanced;
             bot.guessScore=guessScore;
             bot.gemScore=gemScore;
         }
         bestBot.wins++;
-        bestBotAdvanced.winsAdvanced++;
     }
 
     
@@ -578,7 +557,7 @@ public class Suspicion
             break;
         }
 
-        System.out.println("PlayerName,GuessScore,GemScore,TotalScore,wins,advancedGuessScore,winsadvanced");
+        System.out.println("PlayerName,GuessScore,GemScore,TotalScore,wins");
         botit=bots.iterator();
         while(botit.hasNext())
         {
@@ -586,7 +565,7 @@ public class Suspicion
 
             System.out.print("" + bot.bot.playerName + ",");
 
-            System.out.println(bot.guessScore + "," + bot.gemScore + "," + (bot.guessScore+bot.gemScore) + "," + bot.wins + "," + bot.guessScoreAdvanced + "," + bot.winsAdvanced);
+            System.out.println(bot.guessScore + "," + bot.gemScore + "," + (bot.guessScore+bot.gemScore) + "," + bot.wins);
         }
         
     }
@@ -600,9 +579,7 @@ public class Suspicion
     public void printResults2()
     {
         int bestScore=0;
-        int bestScoreAdvanced=0;
         BotManager bestBot=null;
-        BotManager bestBotAdvanced=null;
         Iterator<BotManager> botit = bots.iterator();
         // Print out the guesses for every bot
         while(botit.hasNext())
@@ -621,7 +598,6 @@ public class Suspicion
             BotManager bot = botit.next();
             int guessScore=0;
             int gemScore=0;
-            int guessScoreAdvanced = 0;
 
             System.out.print("" + bot.bot.playerName + ",");
             String guesses[] = bot.bot.reportGuesses().trim().split(":");
@@ -630,14 +606,6 @@ public class Suspicion
                 String p = temp.trim().split(",")[0];
                 String g = temp.trim().split(",")[1];
                 if(board.players.get(g).bot.playerName.equals(p)) guessScore+=7;
-            }
-            
-            String guessesAdvanced[] = bot.bot.reportGuessesAdvanced().trim().split(":");
-            for(String temp:guessesAdvanced)
-            {
-                String pAdvanced = temp.trim().split(",")[0];
-                String gAdvanced = temp.trim().split(",")[1];
-                if(board.players.get(gAdvanced).bot.playerName.equals(pAdvanced)) guessScoreAdvanced+=7;
             }
 
             gemScore = bot.gems[0] + bot.gems[1] + bot.gems[2]; 
@@ -651,21 +619,13 @@ public class Suspicion
                 bestScore = guessScore+gemScore;
                 bestBot=bot;
             }
-            
-            if(guessScoreAdvanced+gemScore>bestScoreAdvanced)
-            {
-                bestScoreAdvanced = guessScoreAdvanced+gemScore;
-                bestBotAdvanced=bot;
-            }
 
             bot.guessScore=guessScore;
-            bot.guessScoreAdvanced = guessScoreAdvanced;
             bot.gemScore=gemScore;
 
             System.out.println(guessScore + "," + gemScore + "," + (guessScore+gemScore));
         }
         bestBot.wins++;
-        bestBotAdvanced.winsAdvanced++;
         
     }
 
@@ -1102,10 +1062,8 @@ public class Suspicion
                 bestBot=tbot;
             }
             tbot.guessScore += bot.guessScore;
-            tbot.guessScoreAdvanced += bot.guessScoreAdvanced;
             tbot.gemScore += bot.gemScore;
             tbot.wins += bot.wins;
-            tbot.winsAdvanced += bot.winsAdvanced;
         }
     }
 
