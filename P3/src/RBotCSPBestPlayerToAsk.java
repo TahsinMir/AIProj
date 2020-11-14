@@ -12,7 +12,7 @@ import java.util.Random;
  *
  */
 
-public class RBotCSP extends Bot
+public class RBotCSPBestPlayerToAsk extends Bot
 {
     Random r = new Random();
     HashMap<String, Piece> pieces; // Keyed off of guest name
@@ -474,7 +474,7 @@ public class RBotCSP extends Bot
 
     }
 
-    public RBotCSP(String playerName, String guestName, int numStartingGems, String gemLocations, String[] playerNames, String[] guestNames)
+    public RBotCSPBestPlayerToAsk(String playerName, String guestName, int numStartingGems, String gemLocations, String[] playerNames, String[] guestNames)
     {
         super(playerName, guestName, numStartingGems, gemLocations, playerNames, guestNames);
         display = new TextDisplay(gemLocations);
