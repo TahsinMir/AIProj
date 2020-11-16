@@ -1,17 +1,10 @@
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Random;
-
+import java.util.*;
 
 /** This is the base class for computer player/bots. 
  * 
  */
 
-public class RBotPrevious extends Bot
+public class RBotRandom extends Bot
 {
     Random r = new Random();
     HashMap<String, Piece> pieces; // Keyed off of guest name
@@ -351,180 +344,24 @@ public class RBotPrevious extends Bot
 
 
 /* Modify this method to do something more intelligent. */
-    //k is the player we are guessing and p.possibleGuestNames has the possible options
-    @Override
     public String reportGuesses()
-    {    	
-    	//assuming we have six players
-    	int noOfPlayers = 6;
-    	
-    	//each item in the list is a string array containing the possible guesses of that player
-    	List<String[]> playerGuessList = new ArrayList<String[]>();
-    	
-    	for(String k:players.keySet())
+    {
+        String rval="";
+        for(String k:players.keySet())
         {
             Player p = players.get(k);
-            
-            String[] playerGuesses = new String[p.possibleGuestNames.size() + 1];
-            playerGuesses[0] = k;
-            for(int i=1;i<p.possibleGuestNames.size() + 1 ; i++)
+            rval += k;
+            Collections.shuffle(p.possibleGuestNames);
+            for(String g: p.possibleGuestNames)
             {
-            	playerGuesses[i] = p.possibleGuestNames.get(i-1);
+                rval += ","+g;
             }
-            //now we have a string array with guesses of this particular player
-            //add it to the list
-            playerGuessList.add(playerGuesses);
+            rval+=":";
         }
-    	
-        //now in stead of random guessing, we do a table lookup
-    	// for 6 players, the guess table of one player should have 5 lists
-    	String startIndex = "";
-    	String endIndex = "";
-    	for(int i=0;i<noOfPlayers-1;i++)
-    	{
-    		startIndex += "1";
-    		endIndex += "9";
-    	}
-    	
-    	List<String> allCombinations = new ArrayList<String>();
-        int totalCombinations = 0;
-        
-        String[] players = new String[noOfPlayers-1];
-        while(!startIndex.equals(endIndex))
-        {
-        	String[] guessCombinations = new String[noOfPlayers-1];
-        	String totalCombinationString = "";
-        	
-        	for(int i=0;i<noOfPlayers-1;i++)
-        	{
-        		int index = (int) (startIndex.charAt(i) - '0');	// the guess we are considering for this combination
-        		
-        		String[] temp = playerGuessList.get(i);
-        		players[i] = temp[0];	// the first value is the name of the player we are guessing, store that
-        		
-        		if(index >= temp.length || index == 0)
-        		{
-        			guessCombinations[i] = "null";
-        		}
-        		else
-        		{
-        			guessCombinations[i] = temp[index];
-        		}
-        		
-        		if(i == 0)
-        		{
-        			totalCombinationString += guessCombinations[i];
-        		}
-        		else
-        		{
-        			totalCombinationString += ":" + guessCombinations[i];
-        		}
-        		
-        	}
-        	
-        	boolean check = true;
-    		//check null
-    		if(totalCombinationString.contains("null"))
-    		{
-    			check = false;
-    		}
-    		else	//guess if all combo are unique
-    		{
-    			for(int l = 0; l< guessCombinations.length;l++)
-    			{
-    				for(int m = l + 1; m< guessCombinations.length;m++)
-    				{
-    					if(guessCombinations[l].equals(guessCombinations[m]))
-    					{
-    						check = false;
-    						break;
-    					}
-    				}
-    			}
-    				
-    		}
-    		if(check)
-    		{
-    			//add this into all combinations
-    			allCombinations.add(totalCombinationString);
-        		totalCombinations++;
-    		}
-    		else
-    		{
-    			// "not valid"
-    		}
-        	
-    		//increment while loop condition
-        	int sIndex = Integer.parseInt(startIndex);
-        	sIndex++;
-        	startIndex = Integer.toString(sIndex);
-        }
-        
-        
-        String[][] table = new String[totalCombinations][5];
-        
-        for(int i = 0; i < totalCombinations; i++)
-        {
-        	String[] line = allCombinations.get(i).split(":");
-        	for(int j = 0; j < noOfPlayers-1; j++)
-        	{
-        		table[i][j] = line[j];
-        	}
-        }
-        
-        String[][] transposedTable = new String[5][totalCombinations];
-        for(int i = 0; i < 5; i++)
-        {
-        	for(int j = 0; j < totalCombinations; j++)
-        	{
-        		transposedTable[i][j] = table[j][i];
-        	}
-        }
-        
-        //so now time to find out who is who
-        String rval="";
-        for(int i=0;i<5;i++)
-        {
-        	//get the player
-        	String player = players[i];
-        	rval += player;
-        	
-        	//get the character with max occurance
-        	String[] guessForThisPlayer = transposedTable[i];
-        	//first create a hashmap to calculate occurance
-        	HashMap<String, Integer> hm = new HashMap<String, Integer>();
-        	for (int j = 0; j < guessForThisPlayer.length; j++) {
-                if ( hm.containsKey(guessForThisPlayer[j]) )
-                {
-                    Integer value = hm.get(guessForThisPlayer[j]);
-                    hm.put(guessForThisPlayer[j], value + 1);
-                }
-                else
-                {
-                    hm.put(guessForThisPlayer[j], 1);
-                }
-            }
-        	//now go through the hash map to find the value with max occurance
-        	String bestGuess = "";
-        	int occurance = 0;
-        	for(String key: hm.keySet())
-        	{
-        		if((int)hm.get(key) > occurance)
-        		{
-        			bestGuess = key;
-        			occurance = (int)hm.get(key);
-        		}
-        	}
-        	
-        	// we have the best guessed character
-        	//store them
-        	rval += "," + bestGuess + ":";
-        }
-    	
         return rval.substring(0,rval.length()-1);
     }
 
-    public RBotPrevious(String playerName, String guestName, int numStartingGems, String gemLocations, String[] playerNames, String[] guestNames)
+    public RBotRandom(String playerName, String guestName, int numStartingGems, String gemLocations, String[] playerNames, String[] guestNames)
     {
         super(playerName, guestName, numStartingGems, gemLocations, playerNames, guestNames);
         display = new TextDisplay(gemLocations);

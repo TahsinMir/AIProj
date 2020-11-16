@@ -266,6 +266,8 @@ public class RBotCSPBestPlayerToAsk extends Bot
 
     // This is the character name that we will be asked question to other player if they can see this player or not
     private String bestPlayerToAsk(String guest, String board){
+        // Position of the character
+        // characterPos =
         // WE need board
         // pieces have the player locations of the board
         float gain = Float.NEGATIVE_INFINITY;
