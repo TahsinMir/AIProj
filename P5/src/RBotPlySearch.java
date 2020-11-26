@@ -23,7 +23,42 @@ public class RBotPlySearch extends Bot
     TextDisplay display;
 
     int[] gemCounts = new int[3];
-
+    
+    public class GameState
+    {
+    	Board b;
+    	HashMap<String, Player> players;
+    	HashMap<String, Piece> pieces;
+    	Piece me;
+    	
+    	public GameState(Board b, HashMap<String, Player> players, HashMap<String, Piece> pieces, Piece me)
+    	{
+    		this.DeepClone(b, players, pieces, me);
+    	}
+    	
+    	private void DeepClone(Board b, HashMap<String, Player> players, HashMap<String, Piece> pieces, Piece me)
+    	{
+    		this.b = new Board(b);
+    		
+    		this.players = new HashMap<String, Player>();
+            for (String key : players.keySet())
+            {
+            	Player originalPlayer = players.get(key);
+                Player player = new Player(originalPlayer);
+                this.players.put(key, player);
+            }
+            
+            this.pieces = new HashMap<String, Piece>();
+            for (String key : pieces.keySet())
+            {
+            	Piece originaPiece = pieces.get(key);
+                Piece piece = new Piece(originaPiece);
+                this.pieces.put(key, piece);
+            }
+            
+            this.me = new Piece(me);
+    	}
+    }
     public static class Board
     {
         public Room rooms[][];
@@ -69,6 +104,30 @@ public class RBotPlySearch extends Bot
                 if(green) temp += "green,";
                 if(yellow) temp += "yellow,";
                 availableGems = (temp.substring(0,temp.length()-1)).split(",");
+            }
+            public Room(Room room)
+            {                
+                for(int i=0;i<3;i++)
+                {
+                	this.gems[i] = room.gems[i];
+                }
+                
+                this.availableGems = new String[room.availableGems.length];
+                for(int i=0;i<room.availableGems.length;i++)
+                {
+                	this.availableGems[i] = new String(room.availableGems[i]);
+                }
+                
+                this.row = room.row;
+                this.col = room.col;
+                
+                this.pieces = new HashMap<String, Piece>();
+                for (String key : room.pieces.keySet())
+                {
+                	Piece originalPiece = room.pieces.get(key);
+                    Piece piece = new Piece(originalPiece);
+                    this.pieces.put(key, piece);
+                }
             }
         }
 
@@ -120,6 +179,18 @@ public class RBotPlySearch extends Bot
                 col = col%4;
             }
         }
+        public Board(Board realBoard)
+        {
+        	this.gemLocations = new String(realBoard.gemLocations);
+        	this.rooms = new Room[realBoard.rooms.length][realBoard.rooms[0].length];
+        	for(int i=0;i<realBoard.rooms.length;i++)
+        	{
+        		for(int j=0;j<realBoard.rooms[0].length;j++)
+        		{
+        			this.rooms[i][j] = new Room(realBoard.rooms[i][j]);
+        		}
+        	}
+        }
     }
 
     public Piece getPiece(String name)
@@ -167,9 +238,19 @@ public class RBotPlySearch extends Bot
                 possibleGuestNames.add(g);
             }
         }
+        
+        public Player(Player realPlayer)
+        {
+        	this.playerName = new String(realPlayer.playerName);
+        	this.possibleGuestNames = new ArrayList<String>();
+        	for(int i=0;i<realPlayer.possibleGuestNames.size();i++)
+        	{
+        		this.possibleGuestNames.add(new String(realPlayer.possibleGuestNames.get(i)));
+        	}
+        }
     }
 
-    public class Piece
+    public static class Piece
     {
         public int row, col;
         public String name;
@@ -177,6 +258,13 @@ public class RBotPlySearch extends Bot
         public Piece(String name)
         {
             this.name = name;
+        }
+        
+        public Piece(Piece realPiece)
+        {
+        	this.name = new String(realPiece.name);
+        	this.row = realPiece.row;
+        	this.col = realPiece.col;
         }
     }
 
@@ -195,6 +283,8 @@ public class RBotPlySearch extends Bot
     public String getPlayerActions(String d1, String d2, String card1, String card2, String board) throws Suspicion.BadActionException
     {
         this.board = new Board(board, pieces, gemLocations);
+        
+        GameState test = new GameState(this.board, this.players, this.pieces, this.me);
         String actions = "";
 
         // Random move for dice1
