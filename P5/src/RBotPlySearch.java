@@ -355,6 +355,7 @@ public class RBotPlySearch extends Bot
     	String[] possibleDice2OptionsArray = possibleDice2Options.split(":");
     	String[] allCardsArray = allCards.split(":");
     	
+    	int counter = 0;
     	for(String dice1 : possibleDice1OptionsArray)
     	{
     		for(String dice2 : possibleDice2OptionsArray)
@@ -363,6 +364,7 @@ public class RBotPlySearch extends Bot
     			{
     				GameState cloned = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
     				String actions = "";
+    				
     				// play the d1
     				Piece piece = pieces.get(dice1);
     		        String[] moves = getPossibleMoves(piece);
@@ -378,6 +380,9 @@ public class RBotPlySearch extends Bot
     		        //cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
     		        
     		        
+    		        actions += ":play,card"+(counter+1);
+    				counter++;
+    				
     		        //play the card
     		        for(String cardAction: card.split(":")) // just go ahead and do them in this order
     		        {
