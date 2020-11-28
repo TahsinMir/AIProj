@@ -844,7 +844,10 @@ public class Suspicion
         try
         {
             //Check the dice actions
-            if(!checkDiceAction(dice1, actions[0].trim())) throw new ActionException("Bad action on first dice throw: " + dice1.getFace() + " " + actions[0].trim());
+            if(!checkDiceAction(dice1, actions[0].trim()))
+            {
+            	throw new ActionException("Bad action on first dice throw: " + dice1.getFace() + " " + actions[0].trim());
+            }
             else 
             {
                 boardStates[1] = performAction(bot, actions[0].trim());
@@ -854,7 +857,10 @@ public class Suspicion
             {
                 if(!checkDiceAction2Moves(dice2, actions[1].trim())) throw new ActionException("Bad action on second dice throw: " + dice2.getFace() + " " + actions[1].trim());
             }*/
-            if(!checkDiceAction(dice2, actions[1].trim())) throw new ActionException("Bad action on second dice throw: " + dice2.getFace() + " " + actions[1].trim());
+            if(!checkDiceAction(dice2, actions[1].trim()))
+            {
+            	throw new ActionException("Bad action on second dice throw: " + dice2.getFace() + " " + actions[1].trim());
+            }
             else 
             {
                 boardStates[2] = performAction(bot, actions[1].trim());

@@ -349,11 +349,11 @@ public class RBotPlySearch extends Bot
     	//all combo from the two cards
     	String allCards = "";
     	allCards += card1;
-    	allCards += ":" + card2;
+    	allCards += ";" + card2;
     	
     	String[] possibleDice1OptionsArray = possibleDice1Options.split(":");
     	String[] possibleDice2OptionsArray = possibleDice2Options.split(":");
-    	String[] allCardsArray = allCards.split(":");
+    	String[] allCardsArray = allCards.split(";");
     	
     	int counter = 0;
     	for(String dice1 : possibleDice1OptionsArray)
@@ -382,6 +382,10 @@ public class RBotPlySearch extends Bot
     		        
     		        actions += ":play,card"+(counter+1);
     				counter++;
+    				if(counter == 2)
+    				{
+    					counter = 0;
+    				}
     				
     		        //play the card
     		        for(String cardAction: card.split(":")) // just go ahead and do them in this order
@@ -429,6 +433,12 @@ public class RBotPlySearch extends Bot
     		        }
     		        
     		        // at this point we have a semi check of all the combo and have the actions string ready for this interation
+    		        /*if(actions.contains("viewDeck"))
+    		        {
+    		        	utility = 1000;
+    		        	resultAction = actions;
+    		        	continue;
+    		        }*/
     		        cloned = this.performAction(cloned, actions);
     		        double tempUtilityEarned = this.GetUtilityEarned(current, cloned);
     		        if(tempUtilityEarned > utility)
@@ -469,7 +479,8 @@ public class RBotPlySearch extends Bot
         }
     	
     	
-    	result = Math.abs(realGem - clonedGem) * 0.5 + Math.abs(realKBsize - clonedKBsize) * 0.5;
+    	result = Math.abs(realGem - clonedGem) * 0.2 + Math.abs(realKBsize - clonedKBsize) * 0.8;
+    	//result = realKBsize - clonedKBsize;
     	return result;
     }
     private GameState performAction(GameState gameState, String actions)
