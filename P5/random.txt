@@ -7,3 +7,4 @@ RBotRandom.class
 RBotProbabilistic.class
 RBotProbabilistic.class
 RBotPlySearch.class
+RBotPlySearch.class

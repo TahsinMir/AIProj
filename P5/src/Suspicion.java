@@ -910,7 +910,7 @@ public class Suspicion
         if(actionDeck.isEmpty()) actionDeck.shuffle();
         bot.cards[cardNumber] = actionDeck.drawCard();
     }
-
+    
     private void viewDeck(BotManager bot)
     {
         Card card = guestDeck.drawCard();
@@ -1024,8 +1024,8 @@ public class Suspicion
             {
                 System.out.println("BAD action by player " + bot.bot.playerName);
             }
-            String card = actions.split(":")[2].trim().split(",")[1].trim();
-            int cardNum = Integer.parseInt(card.substring(card.length()-1,card.length()))-1;
+            //String card = actions.split(":")[2].trim().split(",")[1].trim();
+            //int cardNum = Integer.parseInt(card.substring(card.length()-1,card.length()))-1;
             for(BotManager b: bots)
             {
                 //b.bot.reportPlayerActions(bot.bot.playerName, dice1.getFace(), dice2.getFace(), lastCardPlayed, board.getPlayerLocations(),actions);

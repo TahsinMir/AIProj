@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Random;
 
 
+
+
 /** This is the base class for computer player/bots.
  *
  */
@@ -21,22 +23,24 @@ public class RBotPlySearch extends Bot
     HashMap<String, Player> players; // Keyed off of player name
     String otherPlayerNames[];
     TextDisplay display;
+    String lastCardPlayed;
 
     int[] gemCounts = new int[3];
     
     public class GameState
     {
-    	Board b;
-    	HashMap<String, Player> players;
-    	HashMap<String, Piece> pieces;
-    	Piece me;
+    	public Board b;
+    	public HashMap<String, Player> players;
+    	public HashMap<String, Piece> pieces;
+    	public Piece me;
+    	public int[] myGemCounts;
     	
-    	public GameState(Board b, HashMap<String, Player> players, HashMap<String, Piece> pieces, Piece me)
+    	public GameState(Board b, HashMap<String, Player> players, HashMap<String, Piece> pieces, Piece me, int[] myGemCounts)
     	{
-    		this.DeepClone(b, players, pieces, me);
+    		this.DeepClone(b, players, pieces, me, myGemCounts);
     	}
     	
-    	private void DeepClone(Board b, HashMap<String, Player> players, HashMap<String, Piece> pieces, Piece me)
+    	private void DeepClone(Board b, HashMap<String, Player> players, HashMap<String, Piece> pieces, Piece me, int[] myGemCounts)
     	{
     		this.b = new Board(b);
     		
@@ -57,6 +61,12 @@ public class RBotPlySearch extends Bot
             }
             
             this.me = new Piece(me);
+            
+            this.myGemCounts = new int[3];
+            for(int i=0;i<3;i++)
+            {
+            	this.myGemCounts[i] = myGemCounts[i];
+            }
     	}
     }
     public static class Board
@@ -70,7 +80,7 @@ public class RBotPlySearch extends Bot
             public final String[] availableGems;
             public final int row;
             public final int col;
-            private HashMap<String, Piece> pieces;
+            public HashMap<String, Piece> pieces;
 
             public void removePlayer(Piece piece)
             {
@@ -191,6 +201,28 @@ public class RBotPlySearch extends Bot
         		}
         	}
         }
+        
+        public String getPlayerLocations()
+        {
+            String rval = "";
+            for(int x=0;x<3;x++) 
+            {
+                for(int y=0;y<4;y++)
+                {
+                    boolean comma=false;
+                    HashMap<String, Piece> Pies = rooms[x][y].pieces;
+                    for(String key: Pies.keySet())
+                    {
+                        if(comma) rval+=",";
+                        comma=true;
+                        rval+=key;
+                    }
+                    rval+=":";
+                }
+            }
+            // return the string with the trailing ":" removed
+            return rval.substring(0, rval.length()-1); 
+        }
     }
 
     public Piece getPiece(String name)
@@ -280,12 +312,242 @@ public class RBotPlySearch extends Bot
     }
 
 
+    public String getBestCombinationToPlay(String d1, String d2, String card1, String card2, String board)
+    {
+    	GameState current = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
+    	String resultAction = "";
+    	double utility = Double.NEGATIVE_INFINITY;
+    	// we have the current game state, now we need to generate the game state of every possible combination
+    	// all combination for the dice roll
+    	String possibleDice1Options = "";
+    	if(d1.equals("?"))
+    	{
+    		for(String key : pieces.keySet())
+    		{
+    			possibleDice1Options += key + ":";
+    		}
+    		possibleDice1Options = possibleDice1Options.substring(0,possibleDice1Options.length()-1);
+    	}
+    	else
+    	{
+    		possibleDice1Options += d1;
+    	}
+    	
+    	String possibleDice2Options = "";
+    	if(d2.equals("?"))
+    	{
+    		for(String key : pieces.keySet())
+    		{
+    			possibleDice2Options += key + ":";
+    		}
+    		possibleDice2Options = possibleDice2Options.substring(0,possibleDice2Options.length()-1);
+    	}
+    	else
+    	{
+    		possibleDice2Options += d2;
+    	}
+    	//all combo from the two cards
+    	String allCards = "";
+    	allCards += card1;
+    	allCards += ":" + card2;
+    	
+    	String[] possibleDice1OptionsArray = possibleDice1Options.split(":");
+    	String[] possibleDice2OptionsArray = possibleDice2Options.split(":");
+    	String[] allCardsArray = allCards.split(":");
+    	
+    	for(String dice1 : possibleDice1OptionsArray)
+    	{
+    		for(String dice2 : possibleDice2OptionsArray)
+    		{
+    			for(String card : allCardsArray)
+    			{
+    				GameState cloned = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
+    				String actions = "";
+    				// play the d1
+    				Piece piece = pieces.get(dice1);
+    		        String[] moves = getPossibleMoves(piece);
+    		        int movei = r.nextInt(moves.length);
+    		        actions += "move," + dice1 + "," + moves[movei];
+    		        //cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
+    		        
+    		        // play the d2
+    		        piece = pieces.get(dice2);
+    		        moves = getPossibleMoves(piece);
+    		        movei = r.nextInt(moves.length);
+    		        actions += ":move," + dice2 + "," + moves[movei];
+    		        //cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
+    		        
+    		        
+    		        //play the card
+    		        for(String cardAction: card.split(":")) // just go ahead and do them in this order
+    		        {
+    		            if(cardAction.startsWith("move"))
+    		            {
+    		                String guest;
+    		                guest = guestNames[r.nextInt(guestNames.length)];
+    		                piece = pieces.get(guest);
+    		                moves = getPossibleMoves(piece);
+    		                movei = r.nextInt(moves.length);
+    		                actions += ":move," + guest + "," + moves[movei];
+    		                // cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
+    		            }
+    		            else if(cardAction.startsWith("viewDeck"))
+    		            {
+    		                actions += ":viewDeck";
+    		            }
+    		            else if(cardAction.startsWith("get"))
+    		            {
+    		                String gemToGrab;
+    		                int count;
+    		                if(cardAction.equals("get,"))
+    		                {
+    		                    // Grab a random gem
+    		                    gemToGrab = cloned.b.rooms[cloned.me.row][cloned.me.col].availableGems[r.nextInt(cloned.b.rooms[cloned.me.row][cloned.me.col].availableGems.length)];
+    		                    actions += ":get," + gemToGrab;
+    		                }
+    		                else
+    		                {
+    		                    actions += ":" + cardAction;
+    		                    gemToGrab=cardAction.trim().split(",")[1];
+    		                }
+    		                //if(gemToGrab.equals("red")) gemCounts[Suspicion.RED]++;
+    		                //else if(gemToGrab.equals("green")) gemCounts[Suspicion.GREEN]++;
+    		                //else gemCounts[Suspicion.YELLOW]++;
+    		            }
+    		            else if(cardAction.startsWith("ask"))
+    		            {
+    		                // Ask a random player
+    		                //actions += ":" + cardAction + otherPlayerNames[r.nextInt(otherPlayerNames.length)];
+    		                // Best palyer to ask
+    		                actions += ":" + cardAction + this.bestPlayerToAsk(cloned, cardAction.split(",")[1], cloned.b.getPlayerLocations());
+    		            }
+    		        }
+    		        
+    		        // at this point we have a semi check of all the combo and have the actions string ready for this interation
+    		        cloned = this.performAction(cloned, actions);
+    		        double tempUtilityEarned = this.GetUtilityEarned(current, cloned);
+    		        if(tempUtilityEarned > utility)
+    		        {
+    		        	System.out.print("utility changing from " + utility + " to " + tempUtilityEarned);
+    		        	utility = tempUtilityEarned;
+    		        	resultAction = actions;
+    		        }
+    			}
+    		}
+    	}
+    	
+    	return resultAction;
+    }
+    private double GetUtilityEarned(GameState real, GameState cloned)
+    {
+    	double result = 0;
+    	
+    	int realGem = 0;
+    	int clonedGem = 0;
+    	for(int i=0;i<3;i++)
+    	{
+    		realGem += real.myGemCounts[i];
+    		clonedGem += cloned.myGemCounts[i];
+    	}
+    	
+    	int realKBsize = 0;
+    	int clonedKBsize = 0;
+    	for(String k: real.players.keySet())
+        {
+            Player p = real.players.get(k);
+            realKBsize += p.possibleGuestNames.size();
+        }
+    	for(String k: cloned.players.keySet())
+        {
+            Player p = cloned.players.get(k);
+            clonedKBsize += p.possibleGuestNames.size();
+        }
+    	
+    	
+    	result = Math.abs(realGem - clonedGem) * 0.5 + Math.abs(realKBsize - clonedKBsize) * 0.5;
+    	return result;
+    }
+    private GameState performAction(GameState gameState, String actions)
+    {
+        actions=actions.trim();
+        String[] actionsArray = actions.split(":");
+        for(String action : actionsArray)
+        {
+        	if(action.startsWith("move")) performMove(gameState, action);
+            else if(action.startsWith("play"))
+            {
+            	System.out.println("this is not considered yet 1");// playCard(gameState,action);
+            }
+            else if(action.startsWith("viewDeck")) System.out.println("this is not considered yet 2");//viewDeck(gameState);
+            else if(action.startsWith("get") || action.startsWith("get,")) getGem(gameState,action);
+            else if(action.startsWith("ask")) ask(gameState,action);
+            else throw new RuntimeException("Bad action " + action);
+        }
+        return gameState;
+    }
+    
+    private void performMove(GameState gameState, String action)
+    {
+        String split[] = action.split(",");
+        String guestName = split[1].trim();
+        int row = Integer.parseInt(split[2].trim());
+        int col = Integer.parseInt(split[3].trim());
+        gameState.b.movePlayer(new Piece(guestName), row, col);
+    }
+    
+    private void getGem(GameState gameState, String action)
+    {
+    	String gemToGrab;
+        int count;
+        if(action.equals("get,"))
+        {
+            // Grab a random gem
+            gemToGrab = gameState.b.rooms[me.row][me.col].availableGems[r.nextInt(this.board.rooms[me.row][me.col].availableGems.length)];
+        }
+        else
+        {
+            gemToGrab=action.trim().split(",")[1];
+        }
+        if(gemToGrab.equals("red")) gameState.myGemCounts[Suspicion.RED]++;
+        else if(gemToGrab.equals("green")) gameState.myGemCounts[Suspicion.GREEN]++;
+        else gameState.myGemCounts[Suspicion.YELLOW]++;
+        
+    }
+    
+    private void ask(GameState gameState, String action)
+    {
+        String temp[] = action.split(",");
+        String guest = temp[1];
+        if(temp.length < 3)
+        {
+        	System.out.print("uh oh");
+        }
+        String player = temp[2];        
+        
+        this.answerAsk(gameState, guest, player);
+    }
+    public void answerAsk(GameState gameState, String guest, String player)
+    {
+        ArrayList<String> possibleGuests = new ArrayList<String>();
+        Piece p1 = gameState.pieces.get(guest);  // retrieve the guest
+        for(String k : gameState.pieces.keySet())
+        {
+            Piece p2 = gameState.pieces.get(k);
+            if(canSee(p1,p2)) possibleGuests.add(p2.name);
+        }
+        gameState.players.get(player).adjustKnowledge(possibleGuests);
+    }
+    
     public String getPlayerActions(String d1, String d2, String card1, String card2, String board) throws Suspicion.BadActionException
     {
         this.board = new Board(board, pieces, gemLocations);
         
-        GameState test = new GameState(this.board, this.players, this.pieces, this.me);
-        String actions = "";
+        String resultActions = this.getBestCombinationToPlay(d1, d2, card1, card2, board);
+        GameState resultGameState = this.performAction(new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts), resultActions);
+        this.board = resultGameState.b;
+        return resultActions;
+        
+        /*String actions = "";
 
         // Random move for dice1
         if(d1.equals("?")) d1 = guestNames[r.nextInt(guestNames.length)];
@@ -348,23 +610,24 @@ public class RBotPlySearch extends Bot
                 // Ask a random player
                 //actions += ":" + cardAction + otherPlayerNames[r.nextInt(otherPlayerNames.length)];
                 // Best palyer to ask
-                actions += ":" + cardAction + this.bestPlayerToAsk(cardAction.split(",")[1], board);
+            	GameState current = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
+                actions += ":" + cardAction + this.bestPlayerToAsk(current, cardAction.split(",")[1], board);
             }
         }
-        return actions;
+        return actions;*/
     }
 
     // This is the character name that we will be asked question to other player if they can see this player or not
-    private String bestPlayerToAsk(String guest, String board){
+    private String bestPlayerToAsk(GameState gameState, String guest, String board){
         // WE need board
         // pieces have the player locations of the board
         float gain = Float.NEGATIVE_INFINITY;
         float currentGain;
-        String playerToAsk = "";
+        String playerToAsk = otherPlayerNames[0];
         for (String player: otherPlayerNames){
             // check the entropy gain if we ask this player
             // we will take the highest gain
-            currentGain = getGain(guest, player, board);
+            currentGain = getGain(gameState, guest, player, board);
             if (currentGain > gain){
                 playerToAsk = player;
                 gain = currentGain;
@@ -374,12 +637,12 @@ public class RBotPlySearch extends Bot
         return playerToAsk;
     }
 
-    private float getGain(String guest, String player, String board){
+    private float getGain(GameState gameState, String guest, String player, String board){
         // possible character if the answare is true
-        ArrayList<String> possibleGuest_true = getPossibleGuesAfterAsking(guest, player, board ,true);
+        ArrayList<String> possibleGuest_true = getPossibleGuesAfterAsking(gameState, guest, player, board ,true);
         // possible character if the answare is false
         // Actual KnowledgeBase
-        ArrayList<String> actualKB = players.get(player).possibleGuestNames;
+        ArrayList<String> actualKB = gameState.players.get(player).possibleGuestNames;
         int remainningGuessTrue = remainingGuess(actualKB, possibleGuest_true);
         int remainningGuessFalse = actualKB.size() - remainningGuessTrue;
         float trueFrac = (float) remainningGuessTrue / actualKB.size();
@@ -400,14 +663,13 @@ public class RBotPlySearch extends Bot
         return total_now;
     }
 
-    private ArrayList<String> getPossibleGuesAfterAsking(String guest, String player, String board, boolean canSee)
+    private ArrayList<String> getPossibleGuesAfterAsking(GameState gameState, String guest, String player, String board, boolean canSee)
     {
-        Board b = new Board(board, pieces, gemLocations);
         ArrayList<String> possibleGuests = new ArrayList<String>();
-        Piece p1 = pieces.get(guest);  // retrieve the guest
-        for(String k : pieces.keySet())
+        Piece p1 = gameState.pieces.get(guest);  // retrieve the guest
+        for(String k : gameState.pieces.keySet())
         {
-            Piece p2 = pieces.get(k);
+            Piece p2 = gameState.pieces.get(k);
             if((canSee && canSee(p1,p2)) || (!canSee && !canSee(p1,p2))) possibleGuests.add(p2.name);
         }
         return possibleGuests;
