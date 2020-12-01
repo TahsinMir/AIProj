@@ -368,6 +368,7 @@ public class RBotPlySearch extends Bot
     				// play the d1
     				Piece piece = pieces.get(dice1);
     		        String[] moves = getPossibleMoves(piece);
+    		        // TODO: add movement to utility instead of randomizing it
     		        int movei = r.nextInt(moves.length);
     		        actions += "move," + dice1 + "," + moves[movei];
     		        //cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
@@ -433,17 +434,18 @@ public class RBotPlySearch extends Bot
     		        }
     		        
     		        // at this point we have a semi check of all the combo and have the actions string ready for this interation
-    		        /*if(actions.contains("viewDeck"))
+    		        // TODO: viewDeck needs special check
+    		        if(actions.contains("viewDeck"))
     		        {
     		        	utility = 1000;
     		        	resultAction = actions;
     		        	continue;
-    		        }*/
+    		        }
     		        cloned = this.performAction(cloned, actions);
     		        double tempUtilityEarned = this.GetUtilityEarned(current, cloned);
     		        if(tempUtilityEarned > utility)
     		        {
-    		        	System.out.print("utility changing from " + utility + " to " + tempUtilityEarned);
+    		        	//System.out.print("utility changing from " + utility + " to " + tempUtilityEarned);
     		        	utility = tempUtilityEarned;
     		        	resultAction = actions;
     		        }
@@ -478,8 +480,8 @@ public class RBotPlySearch extends Bot
             clonedKBsize += p.possibleGuestNames.size();
         }
     	
-    	
-    	result = Math.abs(realGem - clonedGem) * 0.2 + Math.abs(realKBsize - clonedKBsize) * 0.8;
+    	// TODO:: need a better utility function
+    	// result = Math.abs(realGem - clonedGem) * 0.1 + Math.abs(realKBsize - clonedKBsize) * 0.9;
     	//result = realKBsize - clonedKBsize;
     	return result;
     }

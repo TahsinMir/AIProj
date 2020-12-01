@@ -1,5 +1,6 @@
-RBotCSPBestPlayerToAsk.class
-RBotCSPBestPlayerToAsk.class
+RBotPlySearch.class
+RBotPlySearch.class
+RBotPlySearch.class
 RBotRandom.class
 RBotRandom.class
 RBotRandom.class
