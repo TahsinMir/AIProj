@@ -457,8 +457,11 @@ public class RBotPlySearch extends Bot
     }
     private double GetUtilityEarned(GameState real, GameState cloned)
     {
+    	//TODO: add position to utility: place where i am with more people maybe?
+    	//TODO: distance? or how many people at my table and at surrounding table
     	double result = 0;
     	
+    	//TODO: if gem pair(red, green, orange) fulfilled: give more weight to gem
     	int realGem = 0;
     	int clonedGem = 0;
     	for(int i=0;i<3;i++)
@@ -481,8 +484,8 @@ public class RBotPlySearch extends Bot
         }
     	
     	// TODO:: need a better utility function
-    	// result = Math.abs(realGem - clonedGem) * 0.1 + Math.abs(realKBsize - clonedKBsize) * 0.9;
-    	//result = realKBsize - clonedKBsize;
+    	//result = Math.abs(realGem - clonedGem) * 0.1 + Math.abs(realKBsize - clonedKBsize) * 0.9;
+    	result = realKBsize - clonedKBsize;
     	return result;
     }
     private GameState performAction(GameState gameState, String actions)
