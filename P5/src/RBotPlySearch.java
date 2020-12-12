@@ -3,6 +3,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
+
 /**
  * This is the base class for computer player/bots.
  */
@@ -11,6 +12,7 @@ public class RBotPlySearch extends Bot {
     Random r = new Random();
     HashMap<String, Piece> pieces; // Keyed off of guest name
     Board board;
+    GameState current;
     Piece me;
     HashMap<String, Player> players; // Keyed off of player name
     String[] otherPlayerNames;
@@ -306,9 +308,15 @@ public class RBotPlySearch extends Bot {
     }
 
     public String getBestCombinationToPlay(String d1, String d2, String card1, String card2, String board) {
-        GameState current = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
+        this.current = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
         String resultAction = "";
         double utility = Double.NEGATIVE_INFINITY;
+        Piece bestUtilityDice1Piece = null, bestUtilityDice2Piece = null, bestUtilityCardMovePiece = null;
+        int bestMoveIDice1 = -1, bestMoveIDice2 = -1, bestMoveICard = -1;
+        String[] bestMoves1 = null, bestMoves2 = null, bestMoves3 = null;
+        String bestGemToPick = null;
+        String bestCardActionsOnly = null;
+        
         // we have the current game state, now we need to generate the game state of every possible combination
         // all combination for the dice roll
         String[] possibleDice1Options = getDiceCombination(d1);
@@ -317,26 +325,44 @@ public class RBotPlySearch extends Bot {
         // Final gem to grab
 
         int counter = 0;
+        int movei1=-1, movei2=-1, movei3=-1;
+        String[] moves1 = null, moves2 = null, moves3 = null;
+        Piece piece1 = null, piece2 = null, piece3 = null;
+        int originalRowPiece1 = -1, originalRowPiece2 = -1, originalRowPiece3 = -1;
+        int originalColPiece1 = -1, originalColPiece2 = -1, originalColPiece3 = -1;
+        String gemToPick = null;
+        String cardActionsOnly = null;
         for (String dice1 : possibleDice1Options) {
             for (String dice2 : possibleDice2Options) {
                 for (String card : allCardsArray) {
                     // TODO: check all moves
                     GameState cloned = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
                     String actions = "";
+                    
+                    HashMap<String, Piece> clonedPieces = new HashMap<String, Piece>();
+                    for(String key: pieces.keySet())
+                    {
+                    	Piece p = new Piece(pieces.get(key));
+                    	clonedPieces.put(key, p);
+                    }
                     // play the d1
-                    Piece piece = pieces.get(dice1);
-                    String[] moves = getPossibleMoves(piece);
+                    piece1 = clonedPieces.get(dice1);
+                    originalRowPiece1 = piece1.row;
+                    originalColPiece1 = piece1.col;
+                    moves1 = getPossibleMoves(piece1);
                     // TODO: add movement to utility instead of randomizing it
-                    int movei = r.nextInt(moves.length);
-                    actions += "move," + dice1 + "," + moves[movei];
-                    cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
+                    movei1 = r.nextInt(moves1.length);
+                    actions += "move," + dice1 + "," + moves1[movei1];
+                    cloned.b.movePlayer(piece1, Integer.parseInt(moves1[movei1].split(",")[0]), Integer.parseInt(moves1[movei1].split(",")[1])); // Perform the move on my board
 
                     // play the d2
-                    piece = pieces.get(dice2);
-                    moves = getPossibleMoves(piece);
-                    movei = r.nextInt(moves.length);
-                    actions += ":move," + dice2 + "," + moves[movei];
-                    cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
+                    piece2 = clonedPieces.get(dice2);
+                    originalRowPiece2 = piece2.row;
+                    originalColPiece2 = piece2.col;
+                    moves2 = getPossibleMoves(piece2);
+                    movei2 = r.nextInt(moves2.length);
+                    actions += ":move," + dice2 + "," + moves2[movei2];
+                    cloned.b.movePlayer(piece2, Integer.parseInt(moves2[movei2].split(",")[0]), Integer.parseInt(moves2[movei2].split(",")[1])); // Perform the move on my board
 
 
                     actions += ":play,card" + (counter + 1);
@@ -348,28 +374,39 @@ public class RBotPlySearch extends Bot {
                     //play the card
                     for (String cardAction : card.split(":")) // just go ahead and do them in this order
                     {
+                    	cardActionsOnly = "";
                         if (cardAction.startsWith("move")) {
                             String guest;
                             guest = guestNames[r.nextInt(guestNames.length)];
-                            piece = pieces.get(guest);
-                            moves = getPossibleMoves(piece);
-                            movei = r.nextInt(moves.length);
-                            actions += ":move," + guest + "," + moves[movei];
-                            cloned.b.movePlayer(piece, Integer.parseInt(moves[movei].split(",")[0]), Integer.parseInt(moves[movei].split(",")[1])); // Perform the move on my board
+                            piece3 = clonedPieces.get(guest);
+                            originalRowPiece3 = piece3.row;
+                            originalColPiece3 = piece3.col;
+                            moves3 = getPossibleMoves(piece3);
+                            movei3 = r.nextInt(moves3.length);
+                            actions += ":move," + guest + "," + moves3[movei3];
+                            cardActionsOnly += ":move," + guest + "," + moves3[movei3];
+                            // this is not present in the original code, need to check
+                            //cloned.b.movePlayer(piece3, Integer.parseInt(moves3[movei3].split(",")[0]), Integer.parseInt(moves3[movei3].split(",")[1])); // Perform the move on my board
                         } else if (cardAction.startsWith("viewDeck")) {
                             actions += ":viewDeck";
+                            cardActionsOnly += ":viewDeck";
                         } else if (cardAction.startsWith("get")) {
                             if (cardAction.equals("get,")) {
                                 // Grab a random gem
-                                actions += ":get," + bestGemToGrab(cloned);
+                            	gemToPick = bestGemToGrab(cloned);
+                                actions += ":get," + gemToPick;
+                                cardActionsOnly += ":get," + gemToPick;
                             } else {
                                 actions += ":" + cardAction;
+                                cardActionsOnly =  ":" + cardAction;
                             }
                         } else if (cardAction.startsWith("ask")) {
                             // Ask a random player
                             //actions += ":" + cardAction + otherPlayerNames[r.nextInt(otherPlayerNames.length)];
                             // Best palyer to ask
-                            actions += ":" + cardAction + this.bestPlayerToAsk(cloned, cardAction.split(",")[1], cloned.b.getPlayerLocations());
+                        	String bestPlayerToAsk = this.bestPlayerToAsk(cloned, cardAction.split(",")[1], cloned.b.getPlayerLocations());
+                            actions += ":" + cardAction + bestPlayerToAsk;
+                            cardActionsOnly =  ":" + cardAction + bestPlayerToAsk;
                         }
                     }
 
@@ -386,6 +423,22 @@ public class RBotPlySearch extends Bot {
                         System.out.print("utility changing from " + utility + " to " + tempUtilityEarned);
                         utility = tempUtilityEarned;
                         resultAction = actions;
+                        
+                        bestUtilityDice1Piece = piece1;
+                        bestUtilityDice2Piece = piece2;
+                        bestUtilityCardMovePiece = piece3;
+                        
+                        bestMoveIDice1 = movei1;
+                        bestMoveIDice2 = movei2;
+                        bestMoveICard = movei3;
+                        
+                        bestMoves1 = moves1;
+                        bestMoves2 = moves2;
+                        bestMoves3 = moves3;
+                        
+                        bestGemToPick = gemToPick;
+                        
+                        bestCardActionsOnly = cardActionsOnly;
                     }
                 }
             }
@@ -399,6 +452,35 @@ public class RBotPlySearch extends Bot {
         //    gemCounts[Suspicion.YELLOW]++;
         //}
         // move the original bot here
+        // now we actually have the optimal action string, but we need to apply some of it before returning
+        bestUtilityDice1Piece.row = originalRowPiece1;
+        bestUtilityDice1Piece.col = originalColPiece1;
+        bestUtilityDice2Piece.row = originalRowPiece2;
+        bestUtilityDice2Piece.col = originalColPiece2;
+        
+        if(bestUtilityCardMovePiece != null)
+        {
+        	bestUtilityCardMovePiece.row = originalRowPiece3;
+            bestUtilityCardMovePiece.col = originalColPiece3;
+        }
+        // dice one move
+        this.current.b.movePlayer(bestUtilityDice1Piece, Integer.parseInt(bestMoves1[bestMoveIDice1].split(",")[0]), Integer.parseInt(bestMoves1[bestMoveIDice1].split(",")[1])); // Perform the move on my board
+        
+        //dice two move
+        this.current.b.movePlayer(bestUtilityDice2Piece, Integer.parseInt(bestMoves2[bestMoveIDice2].split(",")[0]), Integer.parseInt(bestMoves2[bestMoveIDice2].split(",")[1])); // Perform the move on my board
+        
+        // card moves
+        String[] remainingCardMove = bestCardActionsOnly.split(":");
+        for (String cardAction : remainingCardMove)
+        {
+        	if (cardAction.startsWith("get"))
+        	{
+        		if(bestGemToPick.equals("red")) this.gemCounts[Suspicion.RED]++;
+                else if(bestGemToPick.equals("green")) this.gemCounts[Suspicion.GREEN]++;
+                else this.gemCounts[Suspicion.YELLOW]++;
+        	}
+        }
+        
         return resultAction;
     }
 
@@ -465,7 +547,12 @@ public class RBotPlySearch extends Bot {
         String guestName = split[1].trim();
         int row = Integer.parseInt(split[2].trim());
         int col = Integer.parseInt(split[3].trim());
-        gameState.b.movePlayer(new Piece(guestName), row, col);
+        gameState.b.movePlayer(this.getPlayer(gameState, guestName), row, col);
+    }
+    
+    private Piece getPlayer(GameState gameState, String name)
+    {
+        return gameState.pieces.get(name);
     }
 
     private void getGem(GameState gameState, String action) {
@@ -516,12 +603,56 @@ public class RBotPlySearch extends Bot {
     }
 
     public String getPlayerActions(String d1, String d2, String card1, String card2, String board) throws Suspicion.BadActionException {
-        this.board = new Board(board, pieces, gemLocations);
-
+        this.board = new Board(board, this.pieces, this.gemLocations);
+        /*System.out.println("Pieces");
+        for(String key: this.pieces.keySet())
+        {
+        	Piece p = this.pieces.get(key);
+        	
+        	System.out.println(p.name + ", " + p.row + ", " + p.col);
+        }
+        System.out.println("current board situation");
+        for(int i=0;i<3;i++)
+        {
+        	for(int j=0;j<4;j++)
+        	{
+        		System.out.println("i=" + i + ", j = " + j);
+        		
+        		for(String key : this.board.rooms[i][j].pieces.keySet())
+        		{
+        			System.out.print(key + ";");
+        		}
+        		
+        		System.out.print("\n");
+        	}
+        }*/
         String resultActions = this.getBestCombinationToPlay(d1, d2, card1, card2, board);
-        // GameState resultGameState = this.performAction(new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts), resultActions);
-        performAction(resultActions);
-        //this.board = resultGameState.b;
+        //System.out.println("resultActions:  " +resultActions );
+        // no perform action call required, done with that in the getBestCombinationToPlay funcion
+        //GameState resultGameState = this.performAction(new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts), resultActions);
+        // performAction(resultActions);
+        this.board = this.current.b;
+        //this.current.pieces = this.pieces;
+        //this.current.players = this.players;
+        //this.current.me = this.me;
+        this.current.myGemCounts = this.gemCounts;
+        
+        
+        /*System.out.println("after action board situation");
+        for(int i=0;i<3;i++)
+        {
+        	for(int j=0;j<4;j++)
+        	{
+        		System.out.println("i=" + i + ", j = " + j);
+        		
+        		for(String key : this.board.rooms[i][j].pieces.keySet())
+        		{
+        			System.out.print(key + ";");
+        		}
+        		
+        		System.out.print("\n");
+        	}
+        }*/
         return resultActions;
         
         /*String actions = "";
