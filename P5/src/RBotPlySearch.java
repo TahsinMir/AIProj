@@ -434,10 +434,7 @@ public class RBotPlySearch extends Bot {
         return gemPoint;
     }
     private float GetUtilityEarned(GameState real, GameState cloned, float kbGained) {
-        // TODO: add position to utility: place where i am with more people maybe?
-        // TODO: distance? or how many people at my table and at surrounding table
         float result;
-        //TODO: if gem pair(red, green, orange) fulfilled: give more weight to gem
         float gemPoint = getGemPoint(cloned.myGemCounts);
         result = gemPoint/12.0F + kbGained;
         // See Gained point from KB
