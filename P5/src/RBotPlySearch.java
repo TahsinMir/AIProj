@@ -306,10 +306,32 @@ public class RBotPlySearch extends Bot {
         }
     }
 
+    private Float pointGainFromViewDeck(HashMap<String, Player> players){
+        int lengthOfKbForAllPlayer = 0;
+        float KbLoose = 0F;
+        for (String singlePlayer: players.keySet()){
+            int KbLength = players.get(singlePlayer).possibleGuestNames.size();
+            lengthOfKbForAllPlayer += KbLength;
+            // loosing probability
+            if(KbLength >= 9){
+                KbLoose += 1.0F;
+            } else {
+                KbLoose += (KbLength-1) * .1;
+            }
+        }
+        // Total change in Kb
+        float remainingKb = (lengthOfKbForAllPlayer - KbLoose) / lengthOfKbForAllPlayer;
+        if (remainingKb == 1 || remainingKb == 0){
+            return 1F;
+        }
+        float gain = (float) (-remainingKb * Math.log(remainingKb) - (1-remainingKb) * Math.log(1-remainingKb));
+        return gain;
+    }
+
     public String getBestCombinationToPlay(String d1, String d2, String card1, String card2, String board) {
         GameState current = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
         String resultAction = "";
-        double utility = Double.NEGATIVE_INFINITY;
+        float utility = Float.NEGATIVE_INFINITY;
         // we have the current game state, now we need to generate the game state of every possible combination
         // all combination for the dice roll
         String[] possibleDice1Options = getDiceCombination(d1);
@@ -318,7 +340,7 @@ public class RBotPlySearch extends Bot {
         // Final gem to grab
 
         int counter = 0;
-        String[] bestPlayerToAsk = null;
+        float pointFromViewDeck = pointGainFromViewDeck(this.players);
         for (String dice1 : possibleDice1Options) {
             GameState cloned = new GameState(this.board, this.players, this.pieces, this.me, this.gemCounts);
             Piece piece = cloned.pieces.get(dice1);
@@ -349,18 +371,19 @@ public class RBotPlySearch extends Bot {
                             if (counter == 2) {
                                 counter = 0;
                             }
-
+                            String[] bestPlayerToAsk;
+                            float kbGained = 0F;
                             //play the card
                             for (String cardAction : card.split(":")) // just go ahead and do them in this order
                             {
                                 if (cardAction.startsWith("move")) {
                                     String guest;
                                     guest = guestNames[r.nextInt(guestNames.length)];
-                                    piece = pieces.get(guest);
-                                    //moves = getPossibleMoves(piece);
                                     actions += ":move," + guest + "," + r.nextInt(3) + "," + r.nextInt(4);
                                 } else if (cardAction.startsWith("viewDeck")) {
                                     actions += ":viewDeck";
+                                    // How many number will be reduced if view the deck
+                                    kbGained += pointFromViewDeck;
                                 } else if (cardAction.startsWith("get")) {
                                     String gemToGrab;
                                     if (cardAction.equals("get,")) {
@@ -377,11 +400,11 @@ public class RBotPlySearch extends Bot {
                                 } else if (cardAction.startsWith("ask")) {
                                     bestPlayerToAsk = bestPlayerToAsk(cloned3, cardAction.split(",")[1], cloned3.b.getPlayerLocations());
                                     actions += ":" + cardAction + bestPlayerToAsk[0];
+                                    kbGained += Float.parseFloat(bestPlayerToAsk[1]);
                                 }
                             }
                             // cloned = this.performAction(cloned, actions);
-                            float gainFromkb = bestPlayerToAsk == null ? 0F : Float.parseFloat(bestPlayerToAsk[1]);
-                            double tempUtilityEarned = GetUtilityEarned(current, cloned3, gainFromkb);
+                            float tempUtilityEarned = GetUtilityEarned(current, cloned3, kbGained);
                             if (tempUtilityEarned > utility) {
                                 utility = tempUtilityEarned;
                                 resultAction = actions;
@@ -410,68 +433,16 @@ public class RBotPlySearch extends Bot {
         gemPoint += (gemCloned[2] - minimumGem) +(gemCloned[1] - minimumGem);
         return gemPoint;
     }
-    private double GetUtilityEarned(GameState real, GameState cloned, float kbGained) {
+    private float GetUtilityEarned(GameState real, GameState cloned, float kbGained) {
         // TODO: add position to utility: place where i am with more people maybe?
         // TODO: distance? or how many people at my table and at surrounding table
-        double result = 0;
+        float result;
         //TODO: if gem pair(red, green, orange) fulfilled: give more weight to gem
         float gemPoint = getGemPoint(cloned.myGemCounts);
-        result = gemPoint/10 + kbGained;
+        result = gemPoint/12.0F + kbGained;
+        // See Gained point from KB
+        //System.out.println("Gem point: "+ gemPoint/15 + " kbGained: "+ kbGained+" --> "+ result);
         return result;
-    }
-
-    private GameState performAction(GameState gameState, String actions) {
-        actions = actions.trim();
-        String[] actionsArray = actions.split(":");
-        for (String action : actionsArray) {
-            if (action.startsWith("move")) performMove(gameState, action);
-            else if (action.startsWith("play")) {
-                //playCard(gameState,action);
-            } else if (action.startsWith("viewDeck")){
-                //viewDeck(gemState);
-            }
-            else if (action.startsWith("get") || action.startsWith("get,")) getGem(gameState, action);
-            else if (action.startsWith("ask")) ask(gameState, action);
-            else throw new RuntimeException("Bad action " + action);
-        }
-        return gameState;
-    }
-
-    private void performMove(GameState gameState, String action) {
-        String[] split = action.split(",");
-        String guestName = split[1].trim();
-        int row = Integer.parseInt(split[2].trim());
-        int col = Integer.parseInt(split[3].trim());
-        gameState.b.movePlayer(new Piece(guestName), row, col);
-    }
-
-    private void getGem(GameState gameState, String action) {
-        String gemToGrab;
-        gemToGrab = action.trim().split(",")[1];
-        if (gemToGrab.equals("red")) gameState.myGemCounts[Suspicion.RED]++;
-        else if (gemToGrab.equals("green")) gameState.myGemCounts[Suspicion.GREEN]++;
-        else gameState.myGemCounts[Suspicion.YELLOW]++;
-    }
-
-    private void ask(GameState gameState, String action) {
-        String[] temp = action.split(",");
-        String guest = temp[1];
-        if (temp.length < 3) {
-            System.out.print("uh oh");
-        }
-        String player = temp[2];
-
-        this.answerAsk(gameState, guest, player);
-    }
-
-    public void answerAsk(GameState gameState, String guest, String player) {
-        ArrayList<String> possibleGuests = new ArrayList<String>();
-        Piece p1 = gameState.pieces.get(guest);  // retrieve the guest
-        for (String k : gameState.pieces.keySet()) {
-            Piece p2 = gameState.pieces.get(k);
-            if (canSee(p1, p2)) possibleGuests.add(p2.name);
-        }
-        gameState.players.get(player).adjustKnowledge(possibleGuests);
     }
 
     public void performAction(String resultActions){
@@ -488,7 +459,6 @@ public class RBotPlySearch extends Bot {
                 else gemCounts[Suspicion.YELLOW]++;
             }
         }
-
     }
 
     public String getPlayerActions(String d1, String d2, String card1, String card2, String board) throws Suspicion.BadActionException {
