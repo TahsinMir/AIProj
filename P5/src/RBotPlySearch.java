@@ -1,7 +1,4 @@
-import javax.imageio.plugins.tiff.FaxTIFFTagSet;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 
 /**
@@ -290,7 +287,7 @@ public class RBotPlySearch extends Bot {
                 gemId = Suspicion.YELLOW;
             }
             currentGemState[gemId]++;
-            float currentGemUtility = getGemPoint(currentGemState);
+            float currentGemUtility = getGemPoint(currentGemState) - gemPenalize(cloned, gemPick);
             if (currentGemUtility > gemUtility){
                 optimum_gem = gemId;
                 gemUtility = currentGemUtility;
@@ -326,6 +323,20 @@ public class RBotPlySearch extends Bot {
         }
         float gain = (float) (-remainingKb * Math.log(remainingKb) - (1-remainingKb) * Math.log(1-remainingKb));
         return gain;
+    }
+
+    private float gemPenalize(GameState cloned, String gemToGrab){
+        // How many playes can take this red gem
+        float PlayerThatCanTakeThisGem = 0F;
+        for(String character: cloned.pieces.keySet()){
+            int row = cloned.pieces.get(character).row;
+            int col = cloned.pieces.get(character).col;
+            if (Arrays.asList(cloned.b.rooms[row][col].availableGems).contains(gemToGrab)){
+                PlayerThatCanTakeThisGem += 1F;
+            }
+        }
+        // If all the player can take this Gem I am not revealing any of my information
+        return (float) ((10 - PlayerThatCanTakeThisGem) * .1);
     }
 
     public String getBestCombinationToPlay(String d1, String d2, String card1, String card2, String board) {
@@ -378,6 +389,7 @@ public class RBotPlySearch extends Bot {
                             {
                                 if (cardAction.startsWith("move")) {
                                     String guest;
+                                    // Hide our
                                     guest = guestNames[r.nextInt(guestNames.length)];
                                     actions += ":move," + guest + "," + r.nextInt(3) + "," + r.nextInt(4);
                                 } else if (cardAction.startsWith("viewDeck")) {
@@ -390,9 +402,14 @@ public class RBotPlySearch extends Bot {
                                         // Grab a random gem
                                         gemToGrab = bestGemToGrab(cloned3);
                                         actions += ":get," + gemToGrab;
+                                        // Penalize for grabbing this gem
+                                        kbGained -= gemPenalize(cloned3, gemToGrab);
                                     } else {
                                         gemToGrab = cardAction.trim().split(",")[1];
                                         actions += ":" + cardAction;
+                                        // WE will provide some reward because we are not revealing any of our information
+                                        // But we are taking the best gem
+                                        kbGained += .5;
                                     }
                                     if (gemToGrab.equals("red")) cloned3.myGemCounts[Suspicion.RED]++;
                                     else if (gemToGrab.equals("green")) cloned3.myGemCounts[Suspicion.GREEN]++;
